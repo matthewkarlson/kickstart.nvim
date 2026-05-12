@@ -8,15 +8,16 @@ iron.setup {
     repl_definition = {
       python = {
         command = function()
+          local ipython_args = { '--no-autoindent', '--ext', 'autoreload', '--InteractiveShellApp.exec_lines=%autoreload 2' }
           local cwd = vim.fn.getcwd()
           if vim.fn.filereadable(cwd .. '/housekeep/manage.py') == 1 then
-            return { 'uv', 'run', 'housekeep/manage.py', 'shell_plus', '--ipython', '--', '--no-autoindent' }
+            return vim.list_extend({ 'uv', 'run', 'housekeep/manage.py', 'shell_plus', '--ipython', '--' }, ipython_args)
           end
           local venv = vim.env.VIRTUAL_ENV or vim.env.CONDA_PREFIX
           if venv then
-            return { venv .. '/bin/ipython', '--no-autoindent' }
+            return vim.list_extend({ venv .. '/bin/ipython' }, ipython_args)
           end
-          return { 'ipython', '--no-autoindent' }
+          return vim.list_extend({ 'ipython' }, ipython_args)
         end,
         format = require('iron.fts.common').bracketed_paste,
       },

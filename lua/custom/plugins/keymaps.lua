@@ -1,5 +1,12 @@
 vim.keymap.set('n', '<leader>w', '<Cmd>wa<CR>', { desc = '[W]rite all buffers' })
 
+vim.keymap.set('n', '<leader>sb', function()
+  require('telescope.builtin').git_branches {
+    show_remote_tracking_branches = false,
+    sort_lastused = true,
+  }
+end, { desc = '[G]it [S]witch [B]ranch' })
+
 vim.keymap.set('n', '<leader>yd', function()
   local diagnostics = vim.diagnostic.get(0, { lnum = vim.fn.line '.' - 1 })
   if #diagnostics == 0 then
