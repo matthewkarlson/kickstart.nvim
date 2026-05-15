@@ -47,6 +47,9 @@ do
   -- Keep signcolumn on by default
   vim.o.signcolumn = 'yes'
 
+  -- Hide the command line when not in use
+  vim.o.cmdheight = 0
+
   -- Decrease update time
   vim.o.updatetime = 250
 
@@ -76,6 +79,9 @@ do
 
   -- Minimal number of screen lines to keep above and below the cursor.
   vim.o.scrolloff = 10
+
+  -- Subtle vertical line at 88 chars (PEP 8 / Black / this repo's limit)
+  vim.o.colorcolumn = '88'
 
   -- if performing an operation that would fail due to unsaved changes in the buffer (like `:q`),
   -- instead raise a dialog asking if you wish to save the current file(s)
@@ -350,6 +356,26 @@ do
   ---@diagnostic disable-next-line: duplicate-set-field
   statusline.section_location = function() return '%2l:%-2v' end
 
+  ---@diagnostic disable-next-line: duplicate-set-field
+  statusline.section_fileinfo = function(args)
+    local filetype = vim.bo.filetype
+    if filetype == '' then return '' end
+    return filetype
+  end
+
+  ---@diagnostic disable-next-line: duplicate-set-field
+  statusline.section_git = function(args)
+    if statusline.is_truncated(args.trunc_width) then return '' end
+    local summary = vim.b.minigit_summary_string or vim.b.gitsigns_head
+    if summary == nil then return '' end
+    local use_icons = vim.g.have_nerd_font
+    local icon = args.icon or (use_icons and '' or 'Git')
+    local result = summary == '' and '-' or summary:gsub('^(%S+)', function(branch)
+      return #branch > 13 and branch:sub(1, 15) or branch
+    end)
+    return icon .. ' ' .. result
+  end
+
   -- ... and there is more!
   --  Check out: https://github.com/nvim-mini/mini.nvim
 end
@@ -616,7 +642,9 @@ do
     --    https://github.com/pmizio/typescript-tools.nvim
     --
     -- But for many setups, the LSP (`ts_ls`) will work just fine
-    -- ts_ls = {},
+    ts_ls = {},
+
+    angularls = {},
 
     stylua = {}, -- Used to format Lua code
 
@@ -683,6 +711,7 @@ do
     vim.lsp.config(name, server)
     vim.lsp.enable(name)
   end
+
 end
 
 -- ============================================================
