@@ -7,6 +7,18 @@ vim.keymap.set('n', '<leader>sb', function()
   }
 end, { desc = '[G]it [S]witch [B]ranch' })
 
+vim.keymap.set('n', '<leader>gb', function()
+  vim.ui.input({ prompt = 'New branch name: ' }, function(branch_name)
+    if not branch_name or branch_name == '' then return end
+    local result = vim.fn.system('git checkout -b ' .. vim.fn.shellescape(branch_name))
+    if vim.v.shell_error ~= 0 then
+      vim.notify('git checkout -b failed: ' .. result, vim.log.levels.ERROR)
+    else
+      vim.notify('Switched to new branch: ' .. branch_name, vim.log.levels.INFO)
+    end
+  end)
+end, { desc = '[G]it new [B]ranch' })
+
 vim.keymap.set('n', '<leader>yd', function()
   local diagnostics = vim.diagnostic.get(0, { lnum = vim.fn.line '.' - 1 })
   if #diagnostics == 0 then
