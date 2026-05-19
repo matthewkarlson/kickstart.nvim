@@ -19,6 +19,13 @@ vim.keymap.set('n', '<leader>gb', function()
   end)
 end, { desc = '[G]it new [B]ranch' })
 
+vim.keymap.set('n', '<leader>sa', function()
+  require('telescope.builtin').find_files {
+    prompt_title = 'Branch Files (vs staging)',
+    find_command = { 'git', 'diff', 'staging...HEAD', '--name-only' },
+  }
+end, { desc = '[S]earch [A]ctive files (diff vs staging)' })
+
 vim.keymap.set('n', '<leader>yd', function()
   local diagnostics = vim.diagnostic.get(0, { lnum = vim.fn.line '.' - 1 })
   if #diagnostics == 0 then

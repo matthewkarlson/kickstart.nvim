@@ -50,6 +50,14 @@ require('gitsigns').setup {
     -- Toggles
     map('n', '<leader>tb', gitsigns.toggle_current_line_blame, { desc = '[T]oggle git show [b]lame line' })
     map('n', '<leader>tw', gitsigns.toggle_word_diff, { desc = '[T]oggle git intra-line [w]ord diff' })
+    map('n', '<leader>ts', function()
+      vim.g.gitsigns_staging_mode = not vim.g.gitsigns_staging_mode
+      if vim.g.gitsigns_staging_mode then
+        gitsigns.change_base('staging', true)
+      else
+        gitsigns.change_base(nil, true)
+      end
+    end, { desc = '[T]oggle git signs vs [s]taging' })
 
     -- Text object
     map({ 'o', 'x' }, 'ih', gitsigns.select_hunk)

@@ -373,7 +373,8 @@ do
     local result = summary == '' and '-' or summary:gsub('^(%S+)', function(branch)
       return #branch > 13 and branch:sub(1, 15) or branch
     end)
-    return icon .. ' ' .. result
+    local staging_indicator = vim.g.gitsigns_staging_mode and ' [vs staging]' or ''
+    return icon .. ' ' .. result .. staging_indicator
   end
 
   -- ... and there is more!
@@ -743,8 +744,8 @@ do
       lsp_format = 'fallback',
     },
     formatters_by_ft = {
-      -- isort first so blue doesn't reformat its changes
-      python = { 'isort', 'blue' },
+      -- pyupgrade first (syntax rewrites), then isort, then blue
+      python = { 'pyupgrade', 'isort', 'blue' },
       javascript = { 'prettier' },
       typescript = { 'prettier' },
       javascriptreact = { 'prettier' },
@@ -753,7 +754,12 @@ do
       scss = { 'prettier' },
     },
     formatters = {
-      -- Run blue/isort through uv so they use the project's own venv
+      -- Run formatters through uv so they use the project's own venv
+      pyupgrade = {
+        command = 'uv',
+        args = { 'run', 'pyupgrade', '--py38-plus', '--keep-runtime-typing', '$FILENAME' },
+        stdin = false,
+      },
       blue = {
         command = 'uv',
         args = { 'run', 'blue', '-' },
