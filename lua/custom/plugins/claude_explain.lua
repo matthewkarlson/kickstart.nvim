@@ -61,4 +61,31 @@ local function toggle_claude()
   end)
 end
 
+local function get_visual_selection()
+  local start_pos = vim.fn.getpos("'<")
+  local end_pos = vim.fn.getpos("'>")
+  local lines = vim.api.nvim_buf_get_lines(0, start_pos[2] - 1, end_pos[2], false)
+  if #lines == 0 then return '' end
+  local end_col = math.min(end_pos[3], #lines[#lines])
+  if #lines == 1 then
+    lines[1] = lines[1]:sub(start_pos[3], end_col)
+  else
+    lines[1] = lines[1]:sub(start_pos[3])
+    lines[#lines] = lines[#lines]:sub(1, end_col)
+  end
+  return table.concat(lines, '\n')
+end
+
 vim.keymap.set('n', '<leader>cc', toggle_claude, { desc = '[C]laude [C]ode toggle' })
+
+vim.keymap.set('v', '<leader>cc', function()
+  local text = get_visual_selection()
+  if not state.win or not vim.api.nvim_win_is_valid(state.win) then
+    toggle_claude()
+  end
+  vim.schedule(function()
+    if state.buf and vim.api.nvim_buf_is_valid(state.buf) then
+      vim.api.nvim_chan_send(vim.bo[state.buf].channel, text)
+    end
+  end)
+end, { desc = '[C]laude [C]ode send selection' })

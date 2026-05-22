@@ -20,9 +20,10 @@ vim.keymap.set('n', '<leader>gb', function()
 end, { desc = '[G]it new [B]ranch' })
 
 vim.keymap.set('n', '<leader>sa', function()
+  local merge_base = vim.fn.system('git merge-base origin/staging HEAD'):gsub('\n', '')
   require('telescope.builtin').find_files {
     prompt_title = 'Branch Files (vs staging)',
-    find_command = { 'git', 'diff', 'staging...HEAD', '--name-only' },
+    find_command = { 'git', 'diff', merge_base .. '...HEAD', '--name-only' },
   }
 end, { desc = '[S]earch [A]ctive files (diff vs staging)' })
 

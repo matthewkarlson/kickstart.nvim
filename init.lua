@@ -756,8 +756,8 @@ do
     formatters = {
       -- Run formatters through uv so they use the project's own venv
       pyupgrade = {
-        command = 'uv',
-        args = { 'run', 'pyupgrade', '--py38-plus', '--keep-runtime-typing', '$FILENAME' },
+        command = 'uvx',
+        args = { 'pyupgrade', '--py38-plus', '--keep-runtime-typing', '$FILENAME' },
         stdin = false,
       },
       blue = {
