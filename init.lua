@@ -647,6 +647,8 @@ do
 
     angularls = {},
 
+    yamlls = {},
+
     stylua = {}, -- Used to format Lua code
 
     -- Special Lua Config, as recommended by neovim help docs
@@ -786,7 +788,65 @@ do
   -- NOTE: You can also specify plugin using a version range for its git tag.
   --  See `:help vim.version.range()` for more info
   vim.pack.add { { src = gh 'L3MON4D3/LuaSnip', version = vim.version.range '2.*' } }
+
+  -- LuaSnip only highlights the active snippet field if these highlight groups
+  -- already exist (it checks `hlexists()` once, in `setup()`, and bakes the
+  -- result in) - so without this, an accepted choice/placeholder field (eg.
+  -- yaml-language-server's CloudFormation `Type:` completion) just looks like
+  -- plain inserted text instead of an obviously-still-editable field. Must run
+  -- before `setup()` below, and again on every colorscheme change since
+  -- `:colorscheme` resets highlight definitions.
+  local function set_luasnip_highlights()
+    vim.api.nvim_set_hl(0, 'LuasnipChoiceNodeActive', { link = 'IncSearch' })
+    vim.api.nvim_set_hl(0, 'LuasnipChoiceNodePassive', { link = 'Visual' })
+    vim.api.nvim_set_hl(0, 'LuasnipInsertNodeActive', { link = 'IncSearch' })
+    vim.api.nvim_set_hl(0, 'LuasnipInsertNodePassive', { underline = true })
+  end
+  set_luasnip_highlights()
+  vim.api.nvim_create_autocmd(
+    'ColorScheme',
+    { group = vim.api.nvim_create_augroup('luasnip-highlights', { clear = true }), callback = set_luasnip_highlights }
+  )
+
   require('luasnip').setup {}
+
+  -- Some LSPs (eg. yaml-language-server completing an enum property, like
+  -- CloudFormation's `Type:` with 1000+ possible resource types) send back a
+  -- snippet choice node (`${1|opt1,opt2,.../|}`) instead of separate completion
+  -- items. Accepting the completion correctly expands it via LuaSnip and lands
+  -- on the first choice as an editable placeholder (not the LSP "guessing") -
+  -- <C-j> here opens the (fuzzy, via telescope-ui-select) choice picker so you
+  -- can swap it for the option you actually want.
+  -- NOTE: no `blink.cmp.hide()` call here - blink's own accept flow already
+  -- closes its menu before the snippet expands, and calling `hide()` (which
+  -- defers its actual work via `vim.schedule`) alongside LuaSnip's own
+  -- deferred `vim.ui.select` raced badly.
+  --
+  vim.keymap.set({ 'i', 's' }, '<C-j>', function()
+    if require('luasnip').choice_active() then require('luasnip.extras.select_choice')() end
+  end, { desc = 'LuaSnip: select from choice node' })
+
+  -- After picking, the field stays LuaSnip's "active" node until you jump past
+  -- it (there's nowhere else to go otherwise), so its highlight lingers and
+  -- the cursor sits wherever the picked word ends. `LuasnipChangeChoice` is a
+  -- documented LuaSnip User-autocmd fired whenever a choice is set (picker or
+  -- otherwise), so jump forward right after - lands on the snippet's end and
+  -- clears the highlight, with no extra keypress needed.
+  --
+  -- The event fires synchronously from *inside* `set_choice`, mid-mutation of
+  -- the node's marks - calling `jump()` right there errors trying to read a
+  -- not-yet-finalized mark. Defer with `vim.schedule` so it runs after
+  -- `set_choice` (and its caller) have fully returned.
+  vim.api.nvim_create_autocmd('User', {
+    pattern = 'LuasnipChangeChoice',
+    group = vim.api.nvim_create_augroup('luasnip-jump-after-choice', { clear = true }),
+    callback = function()
+      vim.schedule(function()
+        local ls = require('luasnip')
+        if ls.jumpable(1) then ls.jump(1) end
+      end)
+    end,
+  })
 
   -- `friendly-snippets` contains a variety of premade snippets.
   --    See the README about individual language/framework/plugin snippets:
@@ -836,6 +896,20 @@ do
       -- By default, you may press `<c-space>` to show the documentation.
       -- Optionally, set `auto_show = true` to show the documentation after a delay.
       documentation = { auto_show = false, auto_show_delay_ms = 500 },
+
+      list = {
+        selection = {
+          preselect = true,
+          -- Disabled: blink's default (true) live-writes the preselected item into
+          -- the buffer as a preview while you're still typing/navigating, before
+          -- you've accepted anything. For snippet completions with choice nodes
+          -- (eg. yamlls' CloudFormation `Type:` enum) that preview flattens the
+          -- snippet to its first choice as plain text, bypassing LuaSnip's real
+          -- snippet expansion entirely. Disabling this means insertion only
+          -- happens on an explicit accept, which goes through LuaSnip properly.
+          auto_insert = false,
+        },
+      },
     },
 
     sources = {
@@ -875,6 +949,14 @@ do
   local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
   require('nvim-treesitter').install(parsers)
 
+  -- Languages whose bundled treesitter `indents.scm` query is too weak to use
+  -- (e.g. yaml only indents once a mapping value already exists, so it can't
+  -- indent after typing `key:` and pressing <CR>). Neovim's built-in ftplugin
+  -- indent script handles these cases better, so leave indentexpr alone.
+  local treesitter_indent_blocklist = {
+    yaml = true,
+  }
+
   ---@param buf integer
   ---@param language string
   local function treesitter_try_attach(buf, language)
@@ -893,7 +975,9 @@ do
     local has_indent_query = vim.treesitter.query.get(language, 'indents') ~= nil
 
     -- Enable treesitter based indentation
-    if has_indent_query then vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()" end
+    if has_indent_query and not treesitter_indent_blocklist[language] then
+      vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+    end
   end
 
   local available_parsers = require('nvim-treesitter').get_available()
