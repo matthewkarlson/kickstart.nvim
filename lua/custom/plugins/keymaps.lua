@@ -15,6 +15,8 @@ vim.keymap.set('n', '<C-q>', function()
   vim.cmd(is_open and 'cclose' or 'copen')
 end, { desc = 'Toggle [Q]uickfix list' })
 
+vim.keymap.set('n', '<leader>sm', function() require('telescope.builtin').marks() end, { desc = '[S]earch [M]arks' })
+
 vim.keymap.set('n', '<leader>sb', function()
   require('telescope.builtin').git_branches {
     show_remote_tracking_branches = false,
