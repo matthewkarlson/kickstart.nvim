@@ -1,5 +1,20 @@
 vim.keymap.set('n', '<leader>w', '<Cmd>wa<CR>', { desc = '[W]rite all buffers' })
 
+-- Quickfix navigation. Telescope's `<C-q>` (all results) and `<M-q>` (selected
+-- results) fill the list; these walk it.
+vim.keymap.set('n', ']q', '<Cmd>cnext<CR>zz', { desc = 'Next [Q]uickfix item' })
+vim.keymap.set('n', '[q', '<Cmd>cprev<CR>zz', { desc = 'Prev [Q]uickfix item' })
+
+-- Shadows the `<C-v>` alias for blockwise visual, which `<C-v>` itself still covers.
+vim.keymap.set('n', '<C-q>', function()
+  -- `<leader>q` fills the location list, which also reports buftype 'quickfix',
+  -- so match on the window's loclist flag rather than the buffer's type.
+  local is_open = vim.iter(vim.fn.getwininfo()):any(
+    function(win) return win.quickfix == 1 and win.loclist == 0 and win.tabnr == vim.fn.tabpagenr() end
+  )
+  vim.cmd(is_open and 'cclose' or 'copen')
+end, { desc = 'Toggle [Q]uickfix list' })
+
 vim.keymap.set('n', '<leader>sb', function()
   require('telescope.builtin').git_branches {
     show_remote_tracking_branches = false,
